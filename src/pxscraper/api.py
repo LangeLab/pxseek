@@ -4,7 +4,7 @@ import time
 
 import requests
 
-from pxscraper.models import HTTP_TIMEOUT, USER_AGENT, XML_REQUEST_DELAY
+from pxscraper.models import HTTP_TIMEOUT, USER_AGENT, XML_REQUEST_DELAY, validate_pxd_id
 
 SUMMARY_URL = (
     "https://proteomecentral.proteomexchange.org/cgi/GetDataset"
@@ -46,8 +46,6 @@ def fetch_dataset_xml(
     Includes a polite delay before the request to avoid overloading
     the ProteomeCentral server.
     """
-    from pxscraper.models import validate_pxd_id
-
     dataset_id = validate_pxd_id(dataset_id)
     if delay > 0:
         time.sleep(delay)

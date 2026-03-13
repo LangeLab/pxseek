@@ -31,7 +31,10 @@ def _meta_path(cache_dir: Path) -> Path:
 def _read_meta(cache_dir: Path) -> dict:
     meta_path = _meta_path(cache_dir)
     if meta_path.exists():
-        return json.loads(meta_path.read_text())
+        try:
+            return json.loads(meta_path.read_text())
+        except json.JSONDecodeError:
+            return {}
     return {}
 
 

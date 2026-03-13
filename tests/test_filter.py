@@ -338,3 +338,55 @@ class TestApplyFilters:
     def test_returns_copy(self, sample_df):
         df, _ = apply_filters(sample_df, species="Homo sapiens")
         assert df is not sample_df
+
+
+# ---------------------------------------------------------------------------
+# edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestFilterEdgeCases:
+    """Edge cases not covered by specific filter class tests."""
+
+    @pytest.fixture()
+    def empty_df(self, sample_df):
+        """Zero-row DataFrame with correct columns."""
+        return sample_df.iloc[0:0].copy()
+
+    def test_empty_df_by_species(self, empty_df):
+        result = by_species(empty_df, "Homo sapiens")
+        assert len(result) == 0
+        assert list(result.columns) == list(empty_df.columns)
+
+    def test_empty_df_by_repository(self, empty_df):
+        result = by_repository(empty_df, "PRIDE")
+        assert len(result) == 0
+
+    def test_empty_df_by_keywords(self, empty_df):
+        result = by_keywords(empty_df, "cancer")
+        assert len(result) == 0
+
+    def test_empty_df_by_date_range(self, empty_df):
+        result = by_date_range(empty_df, after="2024-01-01")
+        assert len(result) == 0
+
+    def test_empty_df_by_instrument(self, empty_df):
+        result = by_instrument(empty_df, "Orbitrap")
+        assert len(result) == 0
+
+    def test_empty_df_apply_filters(self, empty_df):
+        df, summary = apply_filters(empty_df, species="Homo", keywords="cancer")
+        assert summary["original_count"] == 0
+        assert summary["filtered_count"] == 0
+        assert len(summary["active_filters"]) == 2
+
+    def test_special_chars_in_keyword_escaped(self, sample_df):
+        r"""Keywords with regex special chars are escaped via \b re.escape."""
+        result = by_keywords(sample_df, "cancer (advanced)")
+        assert len(result) == 0  # not in data, but should not raise
+
+    def test_date_format_validation(self, sample_df):
+        """Non-YYYY-MM-DD dates in the column are coerced to NaT."""
+        sample_df.loc[0, "announce_date"] = "Jan 15, 2024"
+        result = by_date_range(sample_df, after="2020-01-01")
+        assert "PXD000001" not in result["dataset_id"].values

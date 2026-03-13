@@ -1,6 +1,6 @@
 # pxscraper Test Matrix
 
-> **149 tests** across 5 modules | v0.3.0 | Python 3.12+
+> **163 tests** across 5 modules | v0.3.1 | Python 3.12+
 
 ---
 
@@ -147,7 +147,7 @@ Unit tests for the `validate_pxd_id()` function in models.py.
 
 ---
 
-## test_cli.py  (24 tests)
+## test_cli.py  (28 tests)
 
 ### TestCliBasics (3)
 
@@ -180,7 +180,7 @@ Placeholder command that will be implemented in a later phase.
 | --- | ------------------ | -------------------------------------------- | ------ | ------------------------ |
 | 1   | `test_lookup_stub` | `lookup` exits 0, says "not yet implemented" | pass   | Graceful stub -- Phase 3 |
 
-### TestFilterCommand (10)
+### TestFilterCommand (14)
 
 End-to-end filter command (mocked API, real file I/O via `tmp_path`).
 
@@ -196,6 +196,10 @@ End-to-end filter command (mocked API, real file I/O via `tmp_path`).
 | 8   | `test_filter_no_matches`                   | Nonexistent species shows "No datasets matched"         | pass   | Graceful empty result                 |
 | 9   | `test_filter_by_date`                      | `--after 2025-02-01` returns correct subset             | pass   | Date range filter works end-to-end    |
 | 10  | `test_filter_connection_error`             | ConnectionError shows friendly message                  | pass   | Network errors handled in filter too  |
+| 11  | `test_filter_invalid_species_regex`        | Bad regex for `--species` shows friendly error          | pass   | User-supplied regex validated early   |
+| 12  | `test_filter_invalid_instrument_regex`     | Bad regex for `--instrument` shows friendly error       | pass   | User-supplied regex validated early   |
+| 13  | `test_filter_by_instrument`                | `--instrument "Q Exactive"` returns correct subset      | pass   | Instrument filter works end-to-end    |
+| 14  | `test_filter_keyword_file`                 | `-k keywords.txt` reads keyword file correctly          | pass   | Keyword file path works via CLI       |
 
 ### TestFetchErrors (3)
 
@@ -217,7 +221,7 @@ Parse diagnostics surfaced in CLI output.
 
 ---
 
-## test_cache.py  (15 tests)
+## test_cache.py  (17 tests)
 
 ### TestGetCacheDir (3)
 
@@ -262,9 +266,18 @@ Cache metadata inspection.
 | 1   | `test_existing`    | Returns dict with `rows` and `timestamp` | pass   | Users can inspect cache state |
 | 2   | `test_nonexistent` | Returns `None` for unknown key           | pass   | Graceful handling             |
 
+### TestCorruptedMetadata (2)
+
+Recovery from corrupted JSON metadata files.
+
+| #   | Test                                  | What it verifies                                          | Expect | Why                              |
+| --- | ------------------------------------- | --------------------------------------------------------- | ------ | -------------------------------- |
+| 1   | `test_corrupted_json_returns_empty`   | Corrupted JSON → load returns None, is_stale returns True | pass   | Silent recovery from corruption  |
+| 2   | `test_save_overwrites_corrupted_json` | Saving after corruption overwrites with valid JSON        | pass   | Self-healing on next write       |
+
 ---
 
-## test_filter.py  (45 tests)
+## test_filter.py  (53 tests)
 
 ### TestBySpecies (7)
 
@@ -353,6 +366,21 @@ Orchestrator that chains all active filters.
 | 7   | `test_keyword_columns_passthrough` | Custom keyword_columns respected                | pass   | Column restriction works     |
 | 8   | `test_returns_copy`                | Filtered df is not the same object as input     | pass   | No mutation of original data |
 
+### TestFilterEdgeCases (8)
+
+Boundary conditions: empty DataFrames, special characters, strict date format.
+
+| #   | Test                                   | What it verifies                                    | Expect | Why                                       |
+| --- | -------------------------------------- | --------------------------------------------------- | ------ | ----------------------------------------- |
+| 1   | `test_empty_df_by_species`             | 0-row df returns 0-row df with correct columns      | pass   | Empty input must not crash                |
+| 2   | `test_empty_df_by_repository`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
+| 3   | `test_empty_df_by_keywords`            | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
+| 4   | `test_empty_df_by_date_range`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
+| 5   | `test_empty_df_by_instrument`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
+| 6   | `test_empty_df_apply_filters`          | Summary shows 0 original and 0 filtered             | pass   | Orchestrator handles empty input          |
+| 7   | `test_special_chars_in_keyword_escaped` | Regex special chars in keyword don't crash          | pass   | `re.escape()` safety in by_keywords       |
+| 8   | `test_date_format_validation`          | Non-YYYY-MM-DD dates in column coerced to NaT       | pass   | Strict format prevents silent mis-parsing |
+
 ---
 
 ## Summary
@@ -360,10 +388,10 @@ Orchestrator that chains all active filters.
 | Module         |   Tests | All pass | Skipped | Expected failures |
 | -------------- | ------: | :------: | :-----: | :---------------: |
 | test_parse.py  |      44 |   yes    |    0    |         0         |
-| test_filter.py |      45 |   yes    |    0    |         0         |
+| test_filter.py |      53 |   yes    |    0    |         0         |
 | test_api.py    |      21 |   yes    |    0    |         0         |
-| test_cli.py    |      24 |   yes    |    0    |         0         |
-| test_cache.py  |      15 |   yes    |    0    |         0         |
-| **Total**      | **149** | **yes**  |  **0**  |       **0**       |
+| test_cli.py    |      28 |   yes    |    0    |         0         |
+| test_cache.py  |      17 |   yes    |    0    |         0         |
+| **Total**      | **163** | **yes**  |  **0**  |       **0**       |
 
 All tests are deterministic, offline (mocked HTTP), and use `tmp_path` for I/O — no network calls, no side effects.

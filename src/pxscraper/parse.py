@@ -91,14 +91,6 @@ def parse_summary_tsv(raw_tsv: str) -> ParseResult:
     return ParseResult(df=df, total_raw_lines=total_raw_lines, skipped_lines=skipped_lines)
 
 
-def _xpath_text(root, xpath: str, default: str = "") -> str:
-    """Extract text attribute from first matching xpath element."""
-    elements = root.xpath(xpath)
-    if elements:
-        return elements[0].strip() if isinstance(elements[0], str) else str(elements[0]).strip()
-    return default
-
-
 def parse_dataset_xml(raw_xml: str) -> dict:
     """Parse a single ProteomeXchange dataset XML into a flat dict.
 

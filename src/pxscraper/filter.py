@@ -67,13 +67,13 @@ def by_date_range(
     Dates are parsed with ``pd.to_datetime(errors="coerce")``.
     Rows with unparseable dates (NaT) are excluded from range matches.
     """
-    dates = pd.to_datetime(df["announce_date"], errors="coerce")
+    dates = pd.to_datetime(df["announce_date"], format="%Y-%m-%d", errors="coerce")
     mask = dates.notna()
 
     if after:
-        mask = mask & (dates >= pd.to_datetime(after))
+        mask = mask & (dates >= pd.to_datetime(after, format="%Y-%m-%d"))
     if before:
-        mask = mask & (dates <= pd.to_datetime(before))
+        mask = mask & (dates <= pd.to_datetime(before, format="%Y-%m-%d"))
 
     return df[mask].copy()
 

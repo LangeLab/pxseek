@@ -150,3 +150,27 @@ class TestCacheInfo:
 
     def test_nonexistent(self, cache_dir):
         assert cache_info("nope", cache_dir=cache_dir) is None
+
+
+# ---------------------------------------------------------------------------
+# corruption handling
+# ---------------------------------------------------------------------------
+
+
+class TestCorruptedMetadata:
+    def test_corrupted_json_returns_empty(self, cache_dir):
+        """Corrupted _metadata.json should not crash; treated as empty."""
+        meta_path = cache_dir / CACHE_META_FILE
+        meta_path.write_text("{invalid json!!!")
+        assert load("summary", cache_dir=cache_dir) is None
+        assert is_stale("summary", cache_dir=cache_dir) is True
+        assert cache_info("summary", cache_dir=cache_dir) is None
+
+    def test_save_overwrites_corrupted_json(self, cache_dir, sample_df):
+        """Saving after corruption should recover cleanly."""
+        meta_path = cache_dir / CACHE_META_FILE
+        meta_path.write_text("NOT VALID JSON")
+        save(sample_df, "recovery", cache_dir=cache_dir)
+        loaded = load("recovery", cache_dir=cache_dir)
+        assert loaded is not None
+        assert len(loaded) == 3

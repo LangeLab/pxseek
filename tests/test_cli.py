@@ -28,7 +28,7 @@ class TestCliBasics:
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.3.0" in result.output
+        assert "0.3.1" in result.output
 
     def test_help(self):
         runner = CliRunner()
@@ -343,6 +343,73 @@ class TestFilterCommand:
 
         assert result.exit_code != 0
         assert "Could not reach ProteomeCentral" in result.output
+
+    def test_filter_invalid_species_regex(self, tmp_path):
+        """Invalid regex pattern for --species should produce a friendly error."""
+        runner = CliRunner()
+        input_file = tmp_path / "data.tsv"
+        input_file.write_text(
+            "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
+            "publication\tlab_head\tannounce_date\tkeywords\n"
+            "PXD000001\tTest\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tDoe\t2025-01-01\ttest,\n"
+        )
+        result = runner.invoke(
+            main, ["filter", "-i", str(input_file), "-s", "[unterminated"]
+        )
+        assert result.exit_code != 0
+        assert "Invalid regex" in result.output
+
+    def test_filter_invalid_instrument_regex(self, tmp_path):
+        """Invalid regex pattern for --instrument should produce a friendly error."""
+        runner = CliRunner()
+        input_file = tmp_path / "data.tsv"
+        input_file.write_text(
+            "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
+            "publication\tlab_head\tannounce_date\tkeywords\n"
+            "PXD000001\tTest\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tDoe\t2025-01-01\ttest,\n"
+        )
+        result = runner.invoke(
+            main, ["filter", "-i", str(input_file), "--instrument", "(bad"]
+        )
+        assert result.exit_code != 0
+        assert "Invalid regex" in result.output
+
+    def test_filter_by_instrument(self, tmp_path):
+        """Instrument filter works via CLI."""
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "--instrument", "Q Exactive"],
+            )
+
+        assert result.exit_code == 0, result.output
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
+        assert df.iloc[0]["dataset_id"] == "PXD000002"
+
+    def test_filter_keyword_file(self, tmp_path):
+        """Keywords from file work via CLI."""
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+        kw_file = tmp_path / "keywords.txt"
+        kw_file.write_text("mouse\n")
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-k", str(kw_file)],
+            )
+
+        assert result.exit_code == 0, result.output
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
 
 
 # ---------------------------------------------------------------------------

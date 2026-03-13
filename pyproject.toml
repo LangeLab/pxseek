@@ -1,6 +1,6 @@
 [project]
 name = "pxscraper"
-version = "0.3.0"
+version = "0.3.1"
 description = "Query, filter, and retrieve proteomics dataset metadata from ProteomeXchange"
 readme = "README.md"
 license = "MIT"

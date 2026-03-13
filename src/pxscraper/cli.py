@@ -1,10 +1,33 @@
 """CLI entry point for pxscraper."""
 
+import re
 from pathlib import Path
 
 import click
 
 from pxscraper import __version__
+
+
+def _fetch_summary_safe(verbose=False):
+    """Fetch summary TSV from ProteomeCentral with friendly error handling."""
+    import requests
+
+    from pxscraper import api
+
+    try:
+        if verbose:
+            click.echo("Downloading dataset listing from ProteomeCentral...")
+        return api.fetch_summary()
+    except requests.ConnectionError:
+        raise click.ClickException(
+            "Could not reach ProteomeCentral. Check your network connection."
+        )
+    except requests.Timeout:
+        raise click.ClickException(
+            "Request to ProteomeCentral timed out. Try again later."
+        )
+    except requests.HTTPError as exc:
+        raise click.ClickException(f"ProteomeCentral returned an error: {exc}")
 
 
 @click.group()
@@ -25,9 +48,7 @@ def main():
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
 def fetch(output, cache_dir, refresh, verbose):
     """Download the full ProteomeXchange dataset listing."""
-    import requests
-
-    from pxscraper import api, cache, parse
+    from pxscraper import cache, parse
 
     cache_base = Path(cache_dir) if cache_dir else None
     cdir = cache.get_cache_dir(cache_base)
@@ -43,20 +64,7 @@ def fetch(output, cache_dir, refresh, verbose):
             return
 
     # Fetch from API
-    try:
-        if verbose:
-            click.echo("Downloading full dataset listing from ProteomeCentral...")
-        raw_tsv = api.fetch_summary()
-    except requests.ConnectionError:
-        raise click.ClickException(
-            "Could not reach ProteomeCentral. Check your network connection."
-        )
-    except requests.Timeout:
-        raise click.ClickException(
-            "Request to ProteomeCentral timed out. Try again later."
-        )
-    except requests.HTTPError as exc:
-        raise click.ClickException(f"ProteomeCentral returned an error: {exc}")
+    raw_tsv = _fetch_summary_safe(verbose)
 
     if verbose:
         click.echo("Parsing TSV...")
@@ -115,10 +123,16 @@ def fetch(output, cache_dir, refresh, verbose):
 def filter(input_file, output, species, repo, keywords, after, before,
            instrument, keyword_columns, cache_dir, verbose):
     """Filter ProteomeXchange datasets by species, repo, keywords, dates, etc."""
-    import requests
-
-    from pxscraper import api, cache, parse
+    from pxscraper import cache, parse
     from pxscraper import filter as filt
+
+    # --- Validate user-supplied regex patterns ---
+    for name, pattern in [("species", species), ("instrument", instrument)]:
+        if pattern:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise click.ClickException(f"Invalid regex for --{name}: {e}")
 
     # --- Load input data ---
     if input_file:
@@ -140,20 +154,7 @@ def filter(input_file, output, species, repo, keywords, after, before,
                 click.echo(f"Using cached data ({info['rows']} datasets)")
 
         if df is None:
-            try:
-                if verbose:
-                    click.echo("Downloading dataset listing from ProteomeCentral...")
-                raw_tsv = api.fetch_summary()
-            except requests.ConnectionError:
-                raise click.ClickException(
-                    "Could not reach ProteomeCentral. Check your network connection."
-                )
-            except requests.Timeout:
-                raise click.ClickException(
-                    "Request to ProteomeCentral timed out. Try again later."
-                )
-            except requests.HTTPError as exc:
-                raise click.ClickException(f"ProteomeCentral returned an error: {exc}")
+            raw_tsv = _fetch_summary_safe(verbose)
 
             result = parse.parse_summary_tsv(raw_tsv)
             df = result.df

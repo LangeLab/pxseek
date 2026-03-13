@@ -2,6 +2,8 @@
 
 import re
 
+from pxscraper import __version__
+
 # Raw TSV header → clean column name mapping
 RAW_TO_CLEAN_COLUMNS = {
     "Dataset Identifier": "dataset_id",
@@ -33,7 +35,10 @@ DEFAULT_CACHE_MAX_AGE_HOURS = 24
 XML_REQUEST_DELAY = 1.0
 
 # User-Agent string for API requests
-USER_AGENT = "pxscraper/0.3.0 (https://github.com/LangeLab/pxscraper; academic research tool)"
+USER_AGENT = (
+    f"pxscraper/{__version__}"
+    " (https://github.com/LangeLab/pxscraper; academic research tool)"
+)
 
 # HTTP timeout in seconds
 HTTP_TIMEOUT = 60
