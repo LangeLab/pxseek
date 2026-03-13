@@ -93,10 +93,107 @@ def fetch(output, cache_dir, refresh, verbose):
 @click.option(
     "-k", "--keywords", default=None, help="Comma-separated keywords or path to keyword file."
 )
+@click.option(
+    "--after", default=None, help="Include datasets on or after DATE (YYYY-MM-DD).",
+)
+@click.option(
+    "--before", default=None, help="Include datasets on or before DATE (YYYY-MM-DD).",
+)
+@click.option("--instrument", default=None, help="Filter by instrument (regex).")
+@click.option(
+    "--keyword-columns",
+    default=None,
+    help="Columns to search for keywords (comma-separated) [default: title,keywords].",
+)
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Cache directory [default: .pxscraper_cache/ in cwd].",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
-def filter(input_file, output, species, repo, keywords, verbose):
-    """Filter ProteomeXchange datasets by species, repo, keywords, etc."""
-    click.echo("filter command not yet implemented (see plan.md for Phase 2)")
+def filter(input_file, output, species, repo, keywords, after, before,
+           instrument, keyword_columns, cache_dir, verbose):
+    """Filter ProteomeXchange datasets by species, repo, keywords, dates, etc."""
+    import requests
+
+    from pxscraper import api, cache, parse
+    from pxscraper import filter as filt
+
+    # --- Load input data ---
+    if input_file:
+        import pandas as pd
+
+        if verbose:
+            click.echo(f"Reading input from {input_file}")
+        df = pd.read_csv(input_file, sep="\t", dtype=str)
+    else:
+        # Auto-fetch: use cache or download
+        cache_base = Path(cache_dir) if cache_dir else None
+        cdir = cache.get_cache_dir(cache_base)
+
+        df = None
+        if not cache.is_stale("summary", cache_dir=cdir):
+            df = cache.load("summary", cache_dir=cdir)
+            if df is not None and verbose:
+                info = cache.cache_info("summary", cache_dir=cdir)
+                click.echo(f"Using cached data ({info['rows']} datasets)")
+
+        if df is None:
+            try:
+                if verbose:
+                    click.echo("Downloading dataset listing from ProteomeCentral...")
+                raw_tsv = api.fetch_summary()
+            except requests.ConnectionError:
+                raise click.ClickException(
+                    "Could not reach ProteomeCentral. Check your network connection."
+                )
+            except requests.Timeout:
+                raise click.ClickException(
+                    "Request to ProteomeCentral timed out. Try again later."
+                )
+            except requests.HTTPError as exc:
+                raise click.ClickException(f"ProteomeCentral returned an error: {exc}")
+
+            result = parse.parse_summary_tsv(raw_tsv)
+            df = result.df
+            cache.save(df, "summary", cache_dir=cdir)
+            if verbose:
+                click.echo(f"Fetched and cached {len(df)} datasets")
+
+    # --- Check we have at least one filter ---
+    has_filter = any([species, repo, keywords, after, before, instrument])
+    if not has_filter:
+        raise click.ClickException(
+            "No filters specified. Use -s, -r, -k, --after, --before, or --instrument."
+        )
+
+    # --- Apply filters ---
+    filtered_df, summary = filt.apply_filters(
+        df,
+        species=species,
+        repository=repo,
+        keywords=keywords,
+        keyword_columns=keyword_columns,
+        after=after,
+        before=before,
+        instrument=instrument,
+    )
+
+    # --- Report ---
+    filters_str = "; ".join(summary["active_filters"])
+    click.echo(
+        f"Filtered {summary['original_count']} -> {summary['filtered_count']} datasets "
+        f"({filters_str})"
+    )
+
+    if summary["filtered_count"] == 0:
+        click.echo("No datasets matched the given filters.")
+        return
+
+    # --- Write output ---
+    filtered_df.to_csv(output, sep="\t", index=False)
+    click.echo(f"Wrote {summary['filtered_count']} datasets to {output}")
 
 
 @main.command()

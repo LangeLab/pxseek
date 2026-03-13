@@ -160,22 +160,189 @@ class TestFetchCommand:
 
 
 # ---------------------------------------------------------------------------
-# filter and lookup stubs
+# stubs (only lookup remains a stub)
 # ---------------------------------------------------------------------------
 
 
 class TestStubs:
-    def test_filter_stub(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["filter"])
-        assert result.exit_code == 0
-        assert "not yet implemented" in result.output
-
     def test_lookup_stub(self):
         runner = CliRunner()
         result = runner.invoke(main, ["lookup"])
         assert result.exit_code == 0
         assert "not yet implemented" in result.output
+
+
+# ---------------------------------------------------------------------------
+# filter command
+# ---------------------------------------------------------------------------
+
+
+class TestFilterCommand:
+    def test_filter_help(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["filter", "--help"])
+        assert result.exit_code == 0
+        for flag in ["--species", "--repo", "--keywords", "--after",
+                      "--before", "--instrument", "--keyword-columns"]:
+            assert flag in result.output
+
+    def test_filter_requires_at_least_one_filter(self, tmp_path):
+        runner = CliRunner()
+        input_file = tmp_path / "data.tsv"
+        input_file.write_text(
+            "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
+            "publication\tlab_head\tannounce_date\tkeywords\n"
+            "PXD000001\tTest\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tDoe\t2025-01-01\ttest,\n"
+        )
+        result = runner.invoke(
+            main, ["filter", "-i", str(input_file), "-o", str(tmp_path / "out.tsv")]
+        )
+        assert result.exit_code != 0
+        assert "No filters specified" in result.output
+
+    def test_filter_with_input_file(self, tmp_path):
+        runner = CliRunner()
+        input_file = tmp_path / "data.tsv"
+        output_file = tmp_path / "filtered.tsv"
+        input_file.write_text(
+            "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
+            "publication\tlab_head\tannounce_date\tkeywords\n"
+            "PXD000001\tTest\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tDoe\t2025-01-01\ttest,\n"
+            "PXD000002\tMouse\tPRIDE\tMus musculus\tOrbitrap\tno pub\tDoe\t2025-02-01\tmouse,\n"
+        )
+        result = runner.invoke(
+            main,
+            ["filter", "-i", str(input_file), "-o", str(output_file), "-s", "Homo"],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Filtered 2 -> 1" in result.output
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
+        assert df.iloc[0]["dataset_id"] == "PXD000001"
+
+    def test_filter_auto_fetch(self, tmp_path):
+        """Filter auto-fetches from API when no --input given."""
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-s", "Homo sapiens"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Filtered" in result.output
+        assert output_file.exists()
+
+    def test_filter_uses_cache(self, tmp_path):
+        """Filter uses existing cache without re-downloading."""
+        runner = CliRunner()
+        cache_dir = tmp_path / "cache"
+
+        # Populate cache via fetch
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            runner.invoke(
+                main,
+                ["fetch", "-o", str(tmp_path / "full.tsv"), "--cache-dir", str(cache_dir)],
+            )
+
+        # Filter should use cache (no API call)
+        output_file = tmp_path / "filtered.tsv"
+        with patch("pxscraper.api.fetch_summary") as mock_fetch:
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-s", "Homo"],
+            )
+            assert mock_fetch.call_count == 0
+        assert result.exit_code == 0
+
+    def test_filter_by_species(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-s", "Mus musculus"],
+            )
+
+        assert result.exit_code == 0, result.output
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
+        assert df.iloc[0]["dataset_id"] == "PXD000002"
+
+    def test_filter_by_repo(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-r", "MassIVE"],
+            )
+
+        assert result.exit_code == 0
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
+
+    def test_filter_no_matches(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-s", "Drosophila"],
+            )
+
+        assert result.exit_code == 0
+        assert "No datasets matched" in result.output
+        assert not output_file.exists()
+
+    def test_filter_by_date(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "--after", "2025-02-01"],
+            )
+
+        assert result.exit_code == 0
+        df = pd.read_csv(output_file, sep="\t")
+        assert len(df) == 1
+        assert df.iloc[0]["dataset_id"] == "PXD000002"
+
+    def test_filter_connection_error(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "filtered.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch(
+            "pxscraper.api.fetch_summary",
+            side_effect=requests.ConnectionError("network down"),
+        ):
+            result = runner.invoke(
+                main,
+                ["filter", "-o", str(output_file), "--cache-dir", str(cache_dir),
+                 "-s", "Homo"],
+            )
+
+        assert result.exit_code != 0
+        assert "Could not reach ProteomeCentral" in result.output
 
 
 # ---------------------------------------------------------------------------
