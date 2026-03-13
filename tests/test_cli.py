@@ -28,7 +28,7 @@ class TestCliBasics:
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.2.2" in result.output
+        assert "0.3.0" in result.output
 
     def test_help(self):
         runner = CliRunner()

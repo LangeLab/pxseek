@@ -33,7 +33,7 @@ DEFAULT_CACHE_MAX_AGE_HOURS = 24
 XML_REQUEST_DELAY = 1.0
 
 # User-Agent string for API requests
-USER_AGENT = "pxscraper/0.2.2 (https://github.com/LangeLab/pxscraper; academic research tool)"
+USER_AGENT = "pxscraper/0.3.0 (https://github.com/LangeLab/pxscraper; academic research tool)"
 
 # HTTP timeout in seconds
 HTTP_TIMEOUT = 60
