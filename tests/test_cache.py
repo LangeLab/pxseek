@@ -2,7 +2,6 @@
 
 import json
 import time
-from pathlib import Path
 
 import pandas as pd
 import pytest

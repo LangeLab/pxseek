@@ -132,7 +132,9 @@ def parse_dataset_xml(raw_xml: str) -> dict:
     result["dois"] = "; ".join(dois)
 
     # FTP location
-    ftp = root.xpath('.//FullDatasetLinkList/FullDatasetLink/cvParam[@name="Dataset FTP location"]/@value')
+    ftp = root.xpath(
+        './/FullDatasetLinkList/FullDatasetLink/cvParam[@name="Dataset FTP location"]/@value'
+    )
     result["ftp_location"] = ftp[0] if ftp else ""
 
     return result

@@ -1,10 +1,9 @@
 """Tests for pxscraper.cli module."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
-import pytest
+import requests
 from click.testing import CliRunner
 
 from pxscraper.cli import main
@@ -122,7 +121,7 @@ class TestFetchCommand:
 
         # Second fetch with --refresh
         with patch("pxscraper.api.fetch_summary", return_value=MOCK_TSV) as mock_fetch:
-            result = runner.invoke(
+            runner.invoke(
                 main,
                 ["fetch", "-o", str(output_file), "--cache-dir", str(cache_dir), "--refresh"],
             )
@@ -177,3 +176,27 @@ class TestStubs:
         result = runner.invoke(main, ["lookup"])
         assert result.exit_code == 0
         assert "not yet implemented" in result.output
+
+
+# ---------------------------------------------------------------------------
+# error handling
+# ---------------------------------------------------------------------------
+
+
+class TestFetchErrors:
+    def test_fetch_network_error(self, tmp_path):
+        runner = CliRunner()
+        output_file = tmp_path / "result.tsv"
+        cache_dir = tmp_path / "cache"
+
+        with patch(
+            "pxscraper.api.fetch_summary",
+            side_effect=requests.ConnectionError("network down"),
+        ):
+            result = runner.invoke(
+                main,
+                ["fetch", "-o", str(output_file), "--cache-dir", str(cache_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert not output_file.exists()

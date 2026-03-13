@@ -1,6 +1,7 @@
 """Tests for pxscraper.parse module."""
 
-import pandas as pd
+from pathlib import Path
+
 import pytest
 
 from pxscraper.parse import parse_dataset_xml, parse_summary_tsv, strip_html
@@ -79,7 +80,7 @@ class TestParseSummaryTsv:
         assert "<a" not in df.iloc[0]["publication"]
         assert "10.1016/x" in df.iloc[0]["publication"]
 
-    def test_announcementXML_dropped(self):
+    def test_announcement_xml_dropped(self):
         df = parse_summary_tsv(SAMPLE_TSV)
         assert "announcementXML" not in df.columns
 
@@ -130,8 +131,6 @@ class TestParseSummaryTsvFixture:
                 f"HTML found in column {col}"
             )
 
-
-from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -358,3 +357,15 @@ class TestParseEdgeCases:
         df = parse_summary_tsv(header_only)
         assert len(df) == 0
         assert "dataset_id" in df.columns
+
+    def test_tsv_empty_string_raises(self):
+        with pytest.raises(Exception):
+            parse_summary_tsv("")
+
+    def test_xml_invalid_raises(self):
+        with pytest.raises(Exception):
+            parse_dataset_xml("this is not xml")
+
+    def test_xml_empty_string_raises(self):
+        with pytest.raises(Exception):
+            parse_dataset_xml("")

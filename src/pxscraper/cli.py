@@ -64,7 +64,9 @@ def fetch(output, cache_dir, refresh, verbose):
 @click.option("-o", "--output", default="filtered_datasets.tsv", help="Output file path.")
 @click.option("-s", "--species", default=None, help="Filter by species (regex).")
 @click.option("-r", "--repo", default=None, help="Filter by repository (e.g. PRIDE,MassIVE).")
-@click.option("-k", "--keywords", default=None, help="Comma-separated keywords or path to keyword file.")
+@click.option(
+    "-k", "--keywords", default=None, help="Comma-separated keywords or path to keyword file."
+)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
 def filter(input_file, output, species, repo, keywords, verbose):
     """Filter ProteomeXchange datasets by species, repo, keywords, etc."""
@@ -73,7 +75,10 @@ def filter(input_file, output, species, repo, keywords, verbose):
 
 @main.command()
 @click.option("--ids", default=None, help="Comma-separated PXD IDs.")
-@click.option("--ids-file", default=None, type=click.Path(exists=True), help="File with one PXD ID per line.")
+@click.option(
+    "--ids-file", default=None, type=click.Path(exists=True),
+    help="File with one PXD ID per line.",
+)
 @click.option("-o", "--output", default=None, help="Output file path (default: stdout).")
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
 def lookup(ids, ids_file, output, verbose):
