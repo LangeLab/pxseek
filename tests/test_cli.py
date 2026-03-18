@@ -160,16 +160,17 @@ class TestFetchCommand:
 
 
 # ---------------------------------------------------------------------------
-# stubs (only lookup remains a stub)
+# stubs (lookup is now fully implemented; basic smoke test lives in test_lookup.py)
 # ---------------------------------------------------------------------------
 
 
 class TestStubs:
-    def test_lookup_stub(self):
+    def test_lookup_no_args_exits_with_error(self):
+        """lookup without any IDs source returns a non-zero exit code."""
         runner = CliRunner()
         result = runner.invoke(main, ["lookup"])
-        assert result.exit_code == 0
-        assert "not yet implemented" in result.output
+        assert result.exit_code != 0
+        assert "No PXD IDs" in result.output
 
 
 # ---------------------------------------------------------------------------

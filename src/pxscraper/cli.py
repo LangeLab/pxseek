@@ -226,8 +226,171 @@ def filter(input_file, output, species, repo, keywords, after, before,
     "--ids-file", default=None, type=click.Path(exists=True),
     help="File with one PXD ID per line.",
 )
-@click.option("-o", "--output", default=None, help="Output file path (default: stdout).")
+@click.option(
+    "-i", "--input", "input_file", default=None, type=click.Path(exists=True),
+    help="TSV from 'filter' or 'fetch': uses the dataset_id column.",
+)
+@click.option("-o", "--output", default="lookup_results.tsv", help="Output file path.")
+@click.option(
+    "--delay", default=1.0, type=float, show_default=True,
+    help="Seconds to wait between requests.",
+)
+@click.option(
+    "--cache-dir", default=None, type=click.Path(),
+    help="Cache directory [default: .pxscraper_cache/ in cwd].",
+)
+@click.option(
+    "--yes", "-y", is_flag=True,
+    help="Skip confirmation prompt.",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
-def lookup(ids, ids_file, output, verbose):
+def lookup(ids, ids_file, input_file, output, delay, cache_dir, yes, verbose):
     """Fetch detailed metadata for specific PXD identifiers."""
-    click.echo("lookup command not yet implemented (see plan.md for Phase 3)")
+    import pandas as pd
+    import requests
+
+    from pxscraper import api, cache, parse
+    from pxscraper.models import validate_pxd_id
+
+    # ------------------------------------------------------------------ #
+    # 1. Collect IDs from all sources                                      #
+    # ------------------------------------------------------------------ #
+    raw_ids: list[str] = []
+
+    if ids:
+        raw_ids.extend(i.strip() for i in ids.split(",") if i.strip())
+
+    if ids_file:
+        path = Path(ids_file)
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                raw_ids.append(line)
+
+    if input_file:
+        try:
+            tsv_df = pd.read_csv(input_file, sep="\t", dtype=str)
+        except Exception as exc:
+            raise click.ClickException(f"Could not read input file {input_file!r}: {exc}")
+        if "dataset_id" not in tsv_df.columns:
+            raise click.ClickException(
+                f"Input file {input_file!r} has no 'dataset_id' column."
+            )
+        raw_ids.extend(
+            str(v).strip() for v in tsv_df["dataset_id"].dropna() if str(v).strip()
+        )
+
+    if not raw_ids:
+        raise click.ClickException(
+            "No PXD IDs provided. Use --ids, --ids-file, or --input."
+        )
+
+    # ------------------------------------------------------------------ #
+    # 2. Validate all IDs upfront                                          #
+    # ------------------------------------------------------------------ #
+    validated: list[str] = []
+    bad: list[str] = []
+    for raw in raw_ids:
+        try:
+            validated.append(validate_pxd_id(raw))
+        except ValueError:
+            bad.append(raw)
+
+    if bad:
+        raise click.ClickException(
+            f"Invalid PXD ID(s): {', '.join(bad)}"
+        )
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_ids: list[str] = []
+    for pid in validated:
+        if pid not in seen:
+            seen.add(pid)
+            unique_ids.append(pid)
+
+    # ------------------------------------------------------------------ #
+    # 3. Cache: skip already-fetched IDs                                   #
+    # ------------------------------------------------------------------ #
+    cache_base = Path(cache_dir) if cache_dir else None
+    cdir = cache.get_cache_dir(cache_base)
+
+    cached_ids = [pid for pid in unique_ids if cache.is_xml_cached(pid, cache_dir=cdir)]
+    to_fetch = [pid for pid in unique_ids if not cache.is_xml_cached(pid, cache_dir=cdir)]
+
+    if verbose and cached_ids:
+        click.echo(f"Using cached XML for {len(cached_ids)} dataset(s).")
+
+    # ------------------------------------------------------------------ #
+    # 4. Confirmation prompt for large fetches                             #
+    # ------------------------------------------------------------------ #
+    if to_fetch and not yes:
+        est_seconds = int(len(to_fetch) * delay)
+        click.confirm(
+            f"Fetch XML for {len(to_fetch)} dataset(s)? "
+            f"(~{est_seconds}s at {delay}s/request)",
+            abort=True,
+        )
+
+    # ------------------------------------------------------------------ #
+    # 5. Fetch from API (cached items loaded from disk)                    #
+    # ------------------------------------------------------------------ #
+    xml_map: dict[str, str | None] = {}
+
+    # Load cached XML
+    for pid in cached_ids:
+        xml_map[pid] = cache.load_xml(pid, cache_dir=cdir)
+
+    # Fetch uncached XML
+    if to_fetch:
+        try:
+            fetched = api.fetch_datasets_xml(to_fetch, delay=delay)
+        except requests.ConnectionError:
+            raise click.ClickException(
+                "Could not reach ProteomeCentral. Check your network connection."
+            )
+        except requests.Timeout:
+            raise click.ClickException(
+                "Request to ProteomeCentral timed out. Try again later."
+            )
+
+        for pid, raw_xml in fetched.items():
+            xml_map[pid] = raw_xml
+            if raw_xml is not None:
+                cache.save_xml(pid, raw_xml, cache_dir=cdir)
+
+    # ------------------------------------------------------------------ #
+    # 6. Parse XML → rows; report failures                                 #
+    # ------------------------------------------------------------------ #
+    rows: list[dict] = []
+    failed: list[str] = []
+
+    for pid in unique_ids:
+        raw_xml = xml_map.get(pid)
+        if raw_xml is None:
+            failed.append(pid)
+            continue
+        try:
+            rows.append(parse.parse_dataset_xml(raw_xml))
+        except Exception as exc:  # noqa: BLE001
+            click.echo(f"Warning: could not parse XML for {pid}: {exc}", err=True)
+            failed.append(pid)
+
+    if failed:
+        click.echo(
+            f"Warning: {len(failed)} dataset(s) could not be fetched/parsed: "
+            f"{', '.join(failed)}",
+            err=True,
+        )
+
+    if not rows:
+        raise click.ClickException("No data to write — all lookups failed.")
+
+    # ------------------------------------------------------------------ #
+    # 7. Write output                                                       #
+    # ------------------------------------------------------------------ #
+    result_df = pd.DataFrame(rows)
+    result_df.to_csv(output, sep="\t", index=False)
+    click.echo(f"Wrote {len(rows)} dataset(s) to {output}")
+    if failed:
+        click.echo(f"({len(failed)} failed — see warnings above)")
