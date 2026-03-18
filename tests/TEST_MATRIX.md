@@ -4,7 +4,7 @@
 
 ---
 
-## test_parse.py  (45 tests)
+## test_parse.py (45 tests)
 
 ### TestStripHtml (8)
 
@@ -95,7 +95,7 @@ Boundary conditions: minimal XML, multi-species, empty inputs, invalid inputs, m
 
 ---
 
-## test_api.py  (21 tests)
+## test_api.py (21 tests)
 
 ### TestSession (2)
 
@@ -148,7 +148,7 @@ Unit tests for the `validate_pxd_id()` function in models.py.
 
 ---
 
-## test_cli.py  (33 tests)
+## test_cli.py (33 tests)
 
 ### TestCliBasics (3)
 
@@ -185,26 +185,26 @@ Placeholder command that will be implemented in a later phase.
 
 End-to-end filter command (mocked API, real file I/O via `tmp_path`).
 
-| #   | Test                                        | What it verifies                                          | Expect | Why                                       |
-| --- | ------------------------------------------- | --------------------------------------------------------- | ------ | ----------------------------------------- |
-| 1   | `test_filter_help`                          | `filter --help` shows all filter flags                    | pass   | All options discoverable                  |
-| 2   | `test_filter_requires_at_least_one_filter`  | No filters raises ClickException                          | pass   | User must specify at least one filter     |
-| 3   | `test_filter_with_input_file`               | `-i data.tsv -s Homo` reads file rather than auto-fetch   | pass   | Explicit input path works                 |
-| 4   | `test_filter_auto_fetch`                    | Auto-downloads from API when no `--input`                 | pass   | Zero-friction first use                   |
-| 5   | `test_filter_uses_cache`                    | Uses existing cache (0 API calls)                         | pass   | Cache avoids re-download                  |
-| 6   | `test_filter_by_species`                    | `-s "Mus musculus"` returns correct subset                | pass   | Species filter works end-to-end           |
-| 7   | `test_filter_by_repo`                       | `-r MassIVE` returns correct subset                       | pass   | Repo filter works end-to-end              |
-| 8   | `test_filter_no_matches`                    | Nonexistent species shows "No datasets matched"           | pass   | Graceful empty result                     |
-| 9   | `test_filter_by_date`                       | `--after 2025-02-01` returns correct subset               | pass   | Date range filter works end-to-end        |
-| 10  | `test_filter_connection_error`              | ConnectionError shows friendly message                    | pass   | Network errors handled in filter too      |
-| 11  | `test_filter_invalid_species_regex`         | Bad regex for `--species` shows friendly error            | pass   | User-supplied regex validated early       |
-| 12  | `test_filter_invalid_instrument_regex`      | Bad regex for `--instrument` shows friendly error         | pass   | User-supplied regex validated early       |
-| 13  | `test_filter_by_instrument`                 | `--instrument "Q Exactive"` returns correct subset        | pass   | Instrument filter works end-to-end        |
-| 14  | `test_filter_keyword_file`                  | `-k keywords.txt` reads keyword file correctly            | pass   | Keyword file path works via CLI           |
-| 15  | `test_filter_invalid_after_date`            | Bad `--after` date shows friendly error with option name  | pass   | Date format validated before data load    |
-| 16  | `test_filter_invalid_before_date`           | Bad `--before` date shows friendly error with option name | pass   | Date format validated before data load    |
-| 17  | `test_filter_after_later_than_before`       | `--after` > `--before` shows friendly error               | pass   | Logically invalid range caught early      |
-| 18  | `test_filter_unknown_keyword_column_warns`  | Unknown column in `--keyword-columns` emits Warning line  | pass   | User notified of typo, filter still runs  |
+| #   | Test                                       | What it verifies                                          | Expect | Why                                      |
+| --- | ------------------------------------------ | --------------------------------------------------------- | ------ | ---------------------------------------- |
+| 1   | `test_filter_help`                         | `filter --help` shows all filter flags                    | pass   | All options discoverable                 |
+| 2   | `test_filter_requires_at_least_one_filter` | No filters raises ClickException                          | pass   | User must specify at least one filter    |
+| 3   | `test_filter_with_input_file`              | `-i data.tsv -s Homo` reads file rather than auto-fetch   | pass   | Explicit input path works                |
+| 4   | `test_filter_auto_fetch`                   | Auto-downloads from API when no `--input`                 | pass   | Zero-friction first use                  |
+| 5   | `test_filter_uses_cache`                   | Uses existing cache (0 API calls)                         | pass   | Cache avoids re-download                 |
+| 6   | `test_filter_by_species`                   | `-s "Mus musculus"` returns correct subset                | pass   | Species filter works end-to-end          |
+| 7   | `test_filter_by_repo`                      | `-r MassIVE` returns correct subset                       | pass   | Repo filter works end-to-end             |
+| 8   | `test_filter_no_matches`                   | Nonexistent species shows "No datasets matched"           | pass   | Graceful empty result                    |
+| 9   | `test_filter_by_date`                      | `--after 2025-02-01` returns correct subset               | pass   | Date range filter works end-to-end       |
+| 10  | `test_filter_connection_error`             | ConnectionError shows friendly message                    | pass   | Network errors handled in filter too     |
+| 11  | `test_filter_invalid_species_regex`        | Bad regex for `--species` shows friendly error            | pass   | User-supplied regex validated early      |
+| 12  | `test_filter_invalid_instrument_regex`     | Bad regex for `--instrument` shows friendly error         | pass   | User-supplied regex validated early      |
+| 13  | `test_filter_by_instrument`                | `--instrument "Q Exactive"` returns correct subset        | pass   | Instrument filter works end-to-end       |
+| 14  | `test_filter_keyword_file`                 | `-k keywords.txt` reads keyword file correctly            | pass   | Keyword file path works via CLI          |
+| 15  | `test_filter_invalid_after_date`           | Bad `--after` date shows friendly error with option name  | pass   | Date format validated before data load   |
+| 16  | `test_filter_invalid_before_date`          | Bad `--before` date shows friendly error with option name | pass   | Date format validated before data load   |
+| 17  | `test_filter_after_later_than_before`      | `--after` > `--before` shows friendly error               | pass   | Logically invalid range caught early     |
+| 18  | `test_filter_unknown_keyword_column_warns` | Unknown column in `--keyword-columns` emits Warning line  | pass   | User notified of typo, filter still runs |
 
 ### TestFetchErrors (3)
 
@@ -226,7 +226,7 @@ Parse diagnostics surfaced in CLI output.
 
 ---
 
-## test_cache.py  (17 tests)
+## test_cache.py (17 tests)
 
 ### TestGetCacheDir (3)
 
@@ -275,14 +275,14 @@ Cache metadata inspection.
 
 Recovery from corrupted JSON metadata files.
 
-| #   | Test                                  | What it verifies                                          | Expect | Why                              |
-| --- | ------------------------------------- | --------------------------------------------------------- | ------ | -------------------------------- |
-| 1   | `test_corrupted_json_returns_empty`   | Corrupted JSON → load returns None, is_stale returns True | pass   | Silent recovery from corruption  |
-| 2   | `test_save_overwrites_corrupted_json` | Saving after corruption overwrites with valid JSON        | pass   | Self-healing on next write       |
+| #   | Test                                  | What it verifies                                          | Expect | Why                             |
+| --- | ------------------------------------- | --------------------------------------------------------- | ------ | ------------------------------- |
+| 1   | `test_corrupted_json_returns_empty`   | Corrupted JSON → load returns None, is_stale returns True | pass   | Silent recovery from corruption |
+| 2   | `test_save_overwrites_corrupted_json` | Saving after corruption overwrites with valid JSON        | pass   | Self-healing on next write      |
 
 ---
 
-## test_filter.py  (53 tests)
+## test_filter.py (53 tests)
 
 ### TestBySpecies (7)
 
@@ -375,16 +375,16 @@ Orchestrator that chains all active filters.
 
 Boundary conditions: empty DataFrames, special characters, strict date format.
 
-| #   | Test                                   | What it verifies                                    | Expect | Why                                       |
-| --- | -------------------------------------- | --------------------------------------------------- | ------ | ----------------------------------------- |
-| 1   | `test_empty_df_by_species`             | 0-row df returns 0-row df with correct columns      | pass   | Empty input must not crash                |
-| 2   | `test_empty_df_by_repository`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
-| 3   | `test_empty_df_by_keywords`            | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
-| 4   | `test_empty_df_by_date_range`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
-| 5   | `test_empty_df_by_instrument`          | 0-row df returns 0-row df                           | pass   | Empty input must not crash                |
-| 6   | `test_empty_df_apply_filters`          | Summary shows 0 original and 0 filtered             | pass   | Orchestrator handles empty input          |
-| 7   | `test_special_chars_in_keyword_escaped` | Regex special chars in keyword don't crash          | pass   | `re.escape()` safety in by_keywords       |
-| 8   | `test_date_format_validation`          | Non-YYYY-MM-DD dates in column coerced to NaT       | pass   | Strict format prevents silent mis-parsing |
+| #   | Test                                    | What it verifies                               | Expect | Why                                       |
+| --- | --------------------------------------- | ---------------------------------------------- | ------ | ----------------------------------------- |
+| 1   | `test_empty_df_by_species`              | 0-row df returns 0-row df with correct columns | pass   | Empty input must not crash                |
+| 2   | `test_empty_df_by_repository`           | 0-row df returns 0-row df                      | pass   | Empty input must not crash                |
+| 3   | `test_empty_df_by_keywords`             | 0-row df returns 0-row df                      | pass   | Empty input must not crash                |
+| 4   | `test_empty_df_by_date_range`           | 0-row df returns 0-row df                      | pass   | Empty input must not crash                |
+| 5   | `test_empty_df_by_instrument`           | 0-row df returns 0-row df                      | pass   | Empty input must not crash                |
+| 6   | `test_empty_df_apply_filters`           | Summary shows 0 original and 0 filtered        | pass   | Orchestrator handles empty input          |
+| 7   | `test_special_chars_in_keyword_escaped` | Regex special chars in keyword don't crash     | pass   | `re.escape()` safety in by_keywords       |
+| 8   | `test_date_format_validation`           | Non-YYYY-MM-DD dates in column coerced to NaT  | pass   | Strict format prevents silent mis-parsing |
 
 ---
 
