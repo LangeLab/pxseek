@@ -144,6 +144,11 @@ def filter(input_file, output, species, repo, keywords, after, before,
                 raise click.ClickException(
                     f"Invalid date for --{opt_name}: {date_str!r} (expected YYYY-MM-DD)"
                 )
+    if after and before:
+        if datetime.strptime(after, "%Y-%m-%d") > datetime.strptime(before, "%Y-%m-%d"):
+            raise click.ClickException(
+                f"--after ({after}) cannot be later than --before ({before})"
+            )
 
     # --- Load input data ---
     if input_file:
@@ -179,6 +184,13 @@ def filter(input_file, output, species, repo, keywords, after, before,
         raise click.ClickException(
             "No filters specified. Use -s, -r, -k, --after, --before, or --instrument."
         )
+
+    # --- Warn about unknown keyword-columns ---
+    if keyword_columns:
+        cols = [c.strip() for c in keyword_columns.split(",") if c.strip()]
+        for col in cols:
+            if col not in df.columns:
+                click.echo(f"Warning: column '{col}' not found in data, ignored.", err=True)
 
     # --- Apply filters ---
     filtered_df, summary = filt.apply_filters(

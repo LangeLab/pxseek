@@ -427,6 +427,35 @@ class TestFilterCommand:
         assert "Invalid date" in result.output
         assert "--before" in result.output
 
+    def test_filter_after_later_than_before(self):
+        """--after later than --before gives a friendly error before data is loaded."""
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["filter", "--after", "2025-12-31", "--before", "2025-01-01"]
+        )
+        assert result.exit_code != 0
+        assert "--after" in result.output
+        assert "--before" in result.output
+
+    def test_filter_unknown_keyword_column_warns(self, tmp_path):
+        """--keyword-columns specifying a column not in the data emits a warning."""
+        runner = CliRunner()
+        input_file = tmp_path / "data.tsv"
+        output_file = tmp_path / "out.tsv"
+        input_file.write_text(
+            "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
+            "publication\tlab_head\tannounce_date\tkeywords\n"
+            "PXD000001\tTest\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tDoe\t2025-01-01\ttest,\n"
+        )
+        result = runner.invoke(
+            main,
+            ["filter", "-i", str(input_file), "-o", str(output_file),
+             "-k", "test", "--keyword-columns", "nonexistent_col"],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Warning" in result.output
+        assert "nonexistent_col" in result.output
+
 
 # ---------------------------------------------------------------------------
 # error handling
