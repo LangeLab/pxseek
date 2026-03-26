@@ -121,8 +121,14 @@ def fetch(output, cache_dir, refresh, verbose):
     help="Cache directory [default: .pxscraper_cache/ in cwd].",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output.")
+@click.option("--deep", is_flag=True, help="Also search within dataset descriptions (fetches XML).")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt for --deep.")
+@click.option(
+    "--delay", default=1.0, type=float, show_default=True,
+    help="Seconds between XML requests (--deep only).",
+)
 def filter(input_file, output, species, repo, keywords, after, before,
-           instrument, keyword_columns, cache_dir, verbose):
+           instrument, keyword_columns, cache_dir, verbose, deep, yes, delay):
     """Filter ProteomeXchange datasets by species, repo, keywords, dates, etc."""
     from pxscraper import cache, parse
     from pxscraper import filter as filt
@@ -149,6 +155,10 @@ def filter(input_file, output, species, repo, keywords, after, before,
             raise click.ClickException(
                 f"--after ({after}) cannot be later than --before ({before})"
             )
+
+    # --- Validate --deep requirement ---
+    if deep and not keywords:
+        raise click.ClickException("--deep requires --keywords (-k)")
 
     # --- Load input data ---
     if input_file:
@@ -193,31 +203,106 @@ def filter(input_file, output, species, repo, keywords, after, before,
                 click.echo(f"Warning: column '{col}' not found in data, ignored.", err=True)
 
     # --- Apply filters ---
-    filtered_df, summary = filt.apply_filters(
-        df,
-        species=species,
-        repository=repo,
-        keywords=keywords,
-        keyword_columns=keyword_columns,
-        after=after,
-        before=before,
-        instrument=instrument,
-    )
+    if deep:
+        # Phase 1: narrow by metadata filters only (skip keywords at summary level)
+        candidates_df, pre_summary = filt.apply_filters(
+            df,
+            species=species,
+            repository=repo,
+            keywords=None,
+            after=after,
+            before=before,
+            instrument=instrument,
+        )
 
-    # --- Report ---
-    filters_str = "; ".join(summary["active_filters"])
-    click.echo(
-        f"Filtered {summary['original_count']} -> {summary['filtered_count']} datasets "
-        f"({filters_str})"
-    )
+        # Phase 2: fetch XML descriptions for all candidates
+        import requests
 
-    if summary["filtered_count"] == 0:
+        from pxscraper import api
+        from pxscraper.models import LOOKUP_CONFIRM_THRESHOLD
+
+        cdir = cache.get_cache_dir(Path(cache_dir) if cache_dir else None)
+        if "dataset_id" not in candidates_df.columns:
+            raise click.ClickException(
+                "Input data has no 'dataset_id' column \u2014 required for --deep."
+            )
+
+        candidate_ids = candidates_df["dataset_id"].tolist()
+        cached_ids = [pid for pid in candidate_ids if cache.is_xml_cached(pid, cache_dir=cdir)]
+        to_fetch = [pid for pid in candidate_ids if not cache.is_xml_cached(pid, cache_dir=cdir)]
+
+        if verbose and cached_ids:
+            click.echo(f"Using cached XML for {len(cached_ids)} dataset(s).")
+
+        if len(to_fetch) > LOOKUP_CONFIRM_THRESHOLD and not yes:
+            est_seconds = int(len(to_fetch) * delay)
+            click.confirm(
+                f"Fetch XML for {len(to_fetch)} dataset(s)?"
+                f" (~{est_seconds}s at {delay}s/request)",
+                abort=True,
+            )
+
+        desc_map: dict[str, str] = {}
+        for pid in cached_ids:
+            raw = cache.load_xml(pid, cache_dir=cdir)
+            if raw:
+                desc_map[pid] = parse.parse_dataset_xml(raw).get("description", "")
+
+        if to_fetch:
+            try:
+                fetched = api.fetch_datasets_xml(to_fetch, delay=delay)
+            except requests.ConnectionError:
+                raise click.ClickException(
+                    "Could not reach ProteomeCentral. Check your network connection."
+                )
+            except requests.Timeout:
+                raise click.ClickException(
+                    "Request to ProteomeCentral timed out. Try again later."
+                )
+            for pid, raw_xml in fetched.items():
+                if raw_xml is not None:
+                    cache.save_xml(pid, raw_xml, cache_dir=cdir)
+                    desc_map[pid] = parse.parse_dataset_xml(raw_xml).get("description", "")
+
+        # Phase 3: merge description column and re-filter on all text fields
+        candidates_df = candidates_df.copy()
+        candidates_df["description"] = candidates_df["dataset_id"].map(desc_map).fillna("")
+        filtered_df = filt.by_keywords(
+            candidates_df, keywords, columns=["title", "keywords", "description"]
+        )
+
+        # Report
+        meta_filters = "; ".join(pre_summary["active_filters"]) or "none"
+        click.echo(
+            f"Filtered {pre_summary['original_count']} -> {len(filtered_df)} datasets "
+            f"({meta_filters}; keywords in title/keywords/description)"
+        )
+    else:
+        # Standard summary-level filter
+        filtered_df, summary = filt.apply_filters(
+            df,
+            species=species,
+            repository=repo,
+            keywords=keywords,
+            keyword_columns=keyword_columns,
+            after=after,
+            before=before,
+            instrument=instrument,
+        )
+
+        filters_str = "; ".join(summary["active_filters"])
+        click.echo(
+            f"Filtered {summary['original_count']} -> {summary['filtered_count']} datasets "
+            f"({filters_str})"
+        )
+
+    if len(filtered_df) == 0:
         click.echo("No datasets matched the given filters.")
         return
 
     # --- Write output ---
     filtered_df.to_csv(output, sep="\t", index=False)
-    click.echo(f"Wrote {summary['filtered_count']} datasets to {output}")
+    click.echo(f"Wrote {len(filtered_df)} datasets to {output}")
 
 
 @main.command()
