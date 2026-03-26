@@ -89,6 +89,15 @@ uv run pxscraper filter -i px_datasets.tsv -s "Mus musculus" -o mouse_datasets.t
 
 # Search specific columns for keywords
 uv run pxscraper filter -k "brain" --keyword-columns "title"
+
+# Deep search — also search within dataset descriptions/abstracts (fetches XML)
+uv run pxscraper filter -k "phosphoproteomics" --deep
+
+# Deep search with species pre-filter to minimise XML requests
+uv run pxscraper filter -s "Homo sapiens" -k "ubiquitylation" --deep
+
+# Deep search with confirmation prompt skipped
+uv run pxscraper filter -k "glycoproteomics" --deep --yes
 ```
 
 When no `--input` is given, `filter` automatically uses cached data or downloads fresh data from ProteomeCentral.

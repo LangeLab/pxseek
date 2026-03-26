@@ -153,6 +153,21 @@ End-to-end filter command (mocked API, real file I/O via `tmp_path`).
 | 17  | `test_filter_after_later_than_before`      | `--after` > `--before` shows friendly error               | pass   | Logically invalid range caught early     |
 | 18  | `test_filter_unknown_keyword_column_warns` | Unknown column in `--keyword-columns` emits Warning line  | pass   | User notified of typo, filter still runs |
 
+### TestFilterDeep (8)
+
+End-to-end deep search (`filter --deep`), XML description matching via mocked API.
+
+| #   | Test                                          | What it verifies                                                | Expect | Why                                                |
+| --- | --------------------------------------------- | --------------------------------------------------------------- | ------ | -------------------------------------------------- |
+| 1   | `test_deep_finds_description_only_match`      | Keyword absent from title/keywords but in XML description found | pass   | Core deep-search use case                          |
+| 2   | `test_deep_no_match_excluded`                 | Keyword absent from all fields → no output rows                 | pass   | True negative: deep search doesn't inflate results |
+| 3   | `test_deep_requires_keywords`                 | `--deep` without `-k` exits with error                          | pass   | Guard against nonsensical invocation               |
+| 4   | `test_deep_output_has_description_column`     | Output TSV contains `description` column                        | pass   | Output enriched with XML data                      |
+| 5   | `test_deep_uses_xml_cache`                    | Pre-cached XML reused; `fetch_datasets_xml` not called          | pass   | Cache avoids redundant network requests            |
+| 6   | `test_deep_yes_skips_prompt`                  | `--yes` skips large-batch confirmation prompt                   | pass   | Non-interactive / scripting mode                   |
+| 7   | `test_deep_large_set_without_yes_prompts`     | Large candidate set triggers prompt; `n` aborts                 | pass   | User protected from accidental 5h fetch            |
+| 8   | `test_deep_connection_error_exits_friendly`   | `ConnectionError` during XML fetch → friendly message, no file  | pass   | Network errors handled cleanly                     |
+
 ### TestFetchErrors (3)
 
 Verifies friendly error messages for network failures.
@@ -527,9 +542,9 @@ Regression tests confirming `parse_dataset_xml()` correctly extracts every field
 | test_parse.py  |      57 |   yes    |    0    |         0         |
 | test_filter.py |      53 |   yes    |    0    |         0         |
 | test_api.py    |      31 |   yes    |    0    |         0         |
-| test_cli.py    |      32 |   yes    |    0    |         0         |
+| test_cli.py    |      40 |   yes    |    0    |         0         |
 | test_cache.py  |      28 |   yes    |    0    |         0         |
 | test_lookup.py |      27 |   yes    |    0    |         0         |
-| **Total**      | **228** | **yes**  |  **0**  |       **0**       |
+| **Total**      | **236** | **yes**  |  **0**  |       **0**       |
 
 All tests are deterministic, offline (mocked HTTP), and use `tmp_path` for I/O — no network calls, no side effects.
