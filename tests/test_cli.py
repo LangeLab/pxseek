@@ -590,7 +590,8 @@ _DEEP_INPUT_TSV = (
     "dataset_id\ttitle\trepository\tspecies\tinstrument\t"
     "publication\tlab_head\tannounce_date\tkeywords\n"
     "PXD000001\tTest title\tPRIDE\tHomo sapiens\tOrbitrap\tno pub\tJ Doe\t2025-01-01\ttest,\n"
-    "PXD000002\tAnother title\tMassIVE\tMus musculus\tQ Exactive\tno pub\tA Smith\t2025-02-01\tmouse,\n"
+    "PXD000002\tAnother title\tMassIVE\tMus musculus\tQ Exactive"
+    "\tno pub\tA Smith\t2025-02-01\tmouse,\n"
 )
 
 
@@ -684,8 +685,12 @@ class TestFilterDeep:
         input_file = self._write_input(tmp_path)
         output_file = tmp_path / "out.tsv"
         cdir = cache.get_cache_dir(tmp_path / "cache")
-        cache.save_xml("PXD000001", self._xml("PXD000001", "A phosphoproteomics study."), cache_dir=cdir)
-        cache.save_xml("PXD000002", self._xml("PXD000002", "A lipidomics study."), cache_dir=cdir)
+        cache.save_xml(
+            "PXD000001", self._xml("PXD000001", "A phosphoproteomics study."), cache_dir=cdir
+        )
+        cache.save_xml(
+            "PXD000002", self._xml("PXD000002", "A lipidomics study."), cache_dir=cdir
+        )
 
         with patch("pxseek.api.fetch_datasets_xml") as mock_fetch:
             result = CliRunner().invoke(

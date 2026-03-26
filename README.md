@@ -8,8 +8,8 @@ Query, filter, and retrieve proteomics dataset metadata from [ProteomeXchange](h
 
 ## Commands
 
-| Command            | Status        | Description                                                   |
-| ------------------ | ------------- | ------------------------------------------------------------- |
+| Command         | Status        | Description                                                   |
+| --------------- | ------------- | ------------------------------------------------------------- |
 | `pxseek fetch`  | **Available** | Download the full dataset listing from ProteomeCentral        |
 | `pxseek filter` | **Available** | Filter datasets by species, repository, keywords, dates, etc. |
 | `pxseek lookup` | **Available** | Fetch detailed metadata for specific PXD identifiers          |

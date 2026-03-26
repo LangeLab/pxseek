@@ -335,7 +335,7 @@ def lookup(ids, ids_file, input_file, output, delay, cache_dir, yes, verbose):
     import requests
 
     from pxseek import api, cache, parse
-    from pxseek.models import validate_pxd_id, LOOKUP_CONFIRM_THRESHOLD
+    from pxseek.models import LOOKUP_CONFIRM_THRESHOLD, validate_pxd_id
 
     # ------------------------------------------------------------------ #
     # 1. Collect IDs from all sources                                      #

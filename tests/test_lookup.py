@@ -311,7 +311,7 @@ class TestLookupConfirmation:
 
         with patch("pxseek.models.LOOKUP_CONFIRM_THRESHOLD", 2):
             with patch("pxseek.api.fetch_datasets_xml", return_value=xml_map):
-                result = runner.invoke(
+                runner.invoke(
                     main,
                     ["lookup", "--ids", ",".join(ids),
                      "-o", str(out), "--cache-dir", str(cache_dir)],

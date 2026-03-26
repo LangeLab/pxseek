@@ -37,7 +37,7 @@ plan.md
 initial-look.md
 
 # Local cache
-.pxscraper_cache/
+.pxseek_cache/
 
 # Testing / coverage
 .coverage
